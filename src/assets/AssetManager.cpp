@@ -481,94 +481,95 @@ namespace Base
   }
 
   // 正确的函数模板特化实现
-  template <> AssetHandle<BaseFont> AssetManager::LoadAsset<BaseFont>(const fs::path &path, bool global) {
-  std::string originalPath = Strings::Strip(path.string());
-  std::string filePath = originalPath;
-  
-  // 获取可执行文件所在目录的辅助函数，显式指定返回类型
-  auto GetExecutableDirectory = []() -> std::string {
-  #if defined(__APPLE__)
-  char path[1024];
-  uint32_t size = sizeof(path);
-  if (_NSGetExecutablePath(path, &size) == 0) {
-  char* dir_end = strrchr(path, '/');
-  if (dir_end != nullptr) {
-  *dir_end = '\0';
-  return std::string(path);
-  }
-  }
-  #elif defined(_WIN32)
-  char path[MAX_PATH];
-  if (GetModuleFileNameA(NULL, path, MAX_PATH) > 0) {
-  char* dir_end = strrchr(path, '\\');
-  if (dir_end != nullptr) {
-  *dir_end = '\0';
-  return std::string(path);
-  }
-  }
-  #else
-  // Linux
-  char path[1024];
-  ssize_t count = readlink("/proc/self/exe", path, sizeof(path)-1);
-  if (count != -1) {
-  path[count] = '\0';
-  char* dir_end = strrchr(path, '/');
-  if (dir_end != nullptr) {
-  *dir_end = '\0';
-  return std::string(path);
-  }
-  }
-  #endif
-  return ".";
-  };
-  
-  // 检查文件是否存在，如果不存在，尝试从可执行文件目录加载
-  if (!fs::exists(filePath)) {
-  std::string exeDir = GetExecutableDirectory();
-  std::string binAssetPath = exeDir + "/" + originalPath;
-  if (fs::exists(binAssetPath)) {
-  filePath = binAssetPath;
-  }
-  }
-  
-  if (fs::exists(filePath)) {
-  std::string name = Strings::ToLower(path.stem().string());
-  std::string fullpath = filePath;
-  
-  if (global) {
-  if (_globalAssets.find(name) == _globalAssets.end()) {
-  // 加载字体，使用正确的BaseFont构造函数
-  Font font = LoadFontEx(fullpath.c_str(), 24, NULL, 0);
-  auto asset = std::make_shared<BaseFont>(font);
-  // 使用正确的AssetSlot构造方式
-  _globalAssets[name] = AssetSlot(AssetHandle<void>(asset.get()), asset);
-  return AssetHandle<BaseFont>::Cast(_globalAssets[name].handle);
-  } else {
-  return AssetHandle<BaseFont>::Cast(_globalAssets[name].handle);
-  }
-  } else if (_currentScene != nullptr) {
-  if (_sceneAssets[_currentScene].find(name) == _sceneAssets[_currentScene].end()) {
-  // 加载字体，使用正确的BaseFont构造函数
-  Font font = LoadFontEx(fullpath.c_str(), 24, NULL, 0);
-  auto asset = std::make_shared<BaseFont>(font);
-  // 使用正确的AssetSlot构造方式
-  _sceneAssets[_currentScene][name] = AssetSlot(AssetHandle<void>(asset.get()), asset);
-  return AssetHandle<BaseFont>::Cast(_sceneAssets[_currentScene][name].handle);
-  } else {
-  std::stringstream error;
-  error << "Repeated loading of scene-local font '" << name << "'";
-  THROW_BASE_RUNTIME_ERROR(error.str());
-  }
-  } else {
-  THROW_BASE_RUNTIME_ERROR("Invalid Scene reference in AssetManager");
-  }
-  }
-  }
-  else
+  template <> AssetHandle<BaseFont> AssetManager::LoadAsset<BaseFont>(const fs::path &path, bool global)
   {
-  std::stringstream error;
-  error << "Cannot find font file '" << path.string() << "'";
-  THROW_BASE_RUNTIME_ERROR(error.str());
-  }
-  }
+    std::string originalPath = Strings::Strip(path.string());
+    std::string filePath = originalPath;
+    
+    // 获取可执行文件所在目录的辅助函数，显式指定返回类型
+    auto GetExecutableDirectory = []() -> std::string {
+    #if defined(__APPLE__)
+    char path[1024];
+    uint32_t size = sizeof(path);
+    if (_NSGetExecutablePath(path, &size) == 0) {
+    char* dir_end = strrchr(path, '/');
+    if (dir_end != nullptr) {
+    *dir_end = '\0';
+    return std::string(path);
+    }
+    }
+    #elif defined(_WIN32)
+    char path[MAX_PATH];
+    if (GetModuleFileNameA(NULL, path, MAX_PATH) > 0) {
+    char* dir_end = strrchr(path, '\\');
+    if (dir_end != nullptr) {
+    *dir_end = '\0';
+    return std::string(path);
+    }
+    }
+    #else
+    // Linux
+    char path[1024];
+    ssize_t count = readlink("/proc/self/exe", path, sizeof(path)-1);
+    if (count != -1) {
+    path[count] = '\0';
+    char* dir_end = strrchr(path, '/');
+    if (dir_end != nullptr) {
+    *dir_end = '\0';
+    return std::string(path);
+    }
+    }
+    #endif
+    return ".";
+    };
+    
+    // 检查文件是否存在，如果不存在，尝试从可执行文件目录加载
+    if (!fs::exists(filePath)) {
+    std::string exeDir = GetExecutableDirectory();
+    std::string binAssetPath = exeDir + "/" + originalPath;
+    if (fs::exists(binAssetPath)) {
+    filePath = binAssetPath;
+    }
+    }
+    
+    if (fs::exists(filePath)) {
+    std::string name = Strings::ToLower(path.stem().string());
+    std::string fullpath = filePath;
+    
+    if (global) {
+    if (_globalAssets.find(name) == _globalAssets.end()) {
+    // 加载字体，使用正确的BaseFont构造函数
+    Font font = LoadFontEx(fullpath.c_str(), 24, NULL, 0);
+    auto asset = std::make_shared<BaseFont>(font);
+    // 使用正确的AssetSlot构造方式
+    _globalAssets[name] = {static_cast<AssetHandle<void>>(asset.get()), asset};
+    return AssetHandle<BaseFont>::Cast(_globalAssets[name].handle);
+    } else {
+    return AssetHandle<BaseFont>::Cast(_globalAssets[name].handle);
+    }
+    } else if (_currentScene != nullptr) {
+    if (_sceneAssets[_currentScene].find(name) == _sceneAssets[_currentScene].end()) {
+    // 加载字体，使用正确的BaseFont构造函数
+    Font font = LoadFontEx(fullpath.c_str(), 24, NULL, 0);
+    auto asset = std::make_shared<BaseFont>(font);
+    // 使用正确的AssetSlot构造方式
+    _sceneAssets[_currentScene][name] = {static_cast<AssetHandle<void>>(asset.get()), asset};
+    return AssetHandle<BaseFont>::Cast(_sceneAssets[_currentScene][name].handle);
+    } else {
+    std::stringstream error;
+    error << "Repeated loading of scene-local font '" << name << "'";
+    THROW_BASE_RUNTIME_ERROR(error.str());
+    }
+    } else {
+    THROW_BASE_RUNTIME_ERROR("Invalid Scene reference in AssetManager");
+    }
+    }
+    }
+    else
+    {
+    std::stringstream error;
+    error << "Cannot find font file '" << path.string() << "'";
+    THROW_BASE_RUNTIME_ERROR(error.str());
+    }
+    }
 } // namespace Base
