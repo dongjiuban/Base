@@ -106,6 +106,84 @@ namespace Base
       THROW_BASE_RUNTIME_ERROR("Neither 48000 Hz nor 44100 Hz supported with PulseAudio and paInt16.");
     }
 
+// 找到文件中现有的条件编译部分（#ifdef _WIN32 和 #elif defined(__linux__)）
+// 在其后添加对 macOS 的支持
+
+#elif defined(__APPLE__)
+    // Prefer CoreAudio on macOS
+    int coreAudioApiIndex = -1;
+    for (int i = 0; i < Pa_GetHostApiCount(); ++i)
+    {
+      const PaHostApiInfo *info = Pa_GetHostApiInfo(i);
+      if (info->type == paCoreAudio)
+      {
+        coreAudioApiIndex = i;
+        break;
+      }
+    }
+
+    if (coreAudioApiIndex == -1)
+    {
+      THROW_BASE_RUNTIME_ERROR("CoreAudio API not found on macOS.");
+    }
+
+    PaDeviceIndex deviceIndex = Pa_GetHostApiInfo(coreAudioApiIndex)->defaultOutputDevice;
+
+    if (deviceIndex == paNoDevice)
+    {
+      THROW_BASE_RUNTIME_ERROR("No default CoreAudio output device.");
+    }
+
+    const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(deviceIndex);
+    outputParams.device = deviceIndex;
+    outputParams.suggestedLatency = deviceInfo->defaultLowOutputLatency;
+
+    bool supported = false;
+
+    for (int rate : preferredRates)
+    {
+      if (Pa_IsFormatSupported(nullptr, &outputParams, rate) == paFormatIsSupported)
+      {
+        _sampleRate = rate;
+        supported = true;
+        break;
+      }
+    }
+
+    if (!supported)
+    {
+      THROW_BASE_RUNTIME_ERROR("Neither 48000 Hz nor 44100 Hz supported with CoreAudio and paInt16.");
+    }
+
+#else
+    // Default fallback for other platforms
+    PaDeviceIndex deviceIndex = Pa_GetDefaultOutputDevice();
+
+    if (deviceIndex == paNoDevice)
+    {
+      THROW_BASE_RUNTIME_ERROR("No default audio output device found.");
+    }
+
+    const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(deviceIndex);
+    outputParams.device = deviceIndex;
+    outputParams.suggestedLatency = deviceInfo->defaultLowOutputLatency;
+
+    bool supported = false;
+
+    for (int rate : preferredRates)
+    {
+      if (Pa_IsFormatSupported(nullptr, &outputParams, rate) == paFormatIsSupported)
+      {
+        _sampleRate = rate;
+        supported = true;
+        break;
+      }
+    }
+
+    if (!supported)
+    {
+      THROW_BASE_RUNTIME_ERROR("Neither 48000 Hz nor 44100 Hz supported with default API and paInt16.");
+    }
 #endif
 
     // Open audio output stream
