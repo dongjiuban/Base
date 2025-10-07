@@ -20,9 +20,12 @@
 #include <string.h>
 #include <vector>
 
-// 在文件顶部添加缺失的头文件
-#include <mach-o/dyld.h>  // 用于macOS的_NSGetExecutablePath
-#include <Windows.h>     // 用于Windows的GetModuleFileNameA
+// 仅在需要时包含特定平台的头文件
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>  // 仅在macOS上包含
+#elif defined(_WIN32)
+#include <Windows.h>     // 仅在Windows上包含
+#endif
 
 namespace Base
 {
@@ -566,7 +569,6 @@ namespace Base
   std::stringstream error;
   error << "Cannot find font file '" << path.string() << "'";
   THROW_BASE_RUNTIME_ERROR(error.str());
-  }
   }
   }
   } // namespace Base
