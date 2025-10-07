@@ -20,6 +20,10 @@
 #include <string.h>
 #include <vector>
 
+// 在文件顶部添加缺失的头文件
+#include <mach-o/dyld.h>  // 用于macOS的_NSGetExecutablePath
+#include <Windows.h>     // 用于Windows的GetModuleFileNameA
+
 namespace Base
 {
   void AssetManager::Init()
@@ -473,13 +477,13 @@ namespace Base
     }
   }
 
-  // 移到Base命名空间内，但在AssetManager类定义之外的正确函数模板特化
+  // 正确的函数模板特化实现
   template <> AssetHandle<BaseFont> AssetManager::LoadAsset<BaseFont>(const fs::path &path, bool global) {
   std::string originalPath = Strings::Strip(path.string());
   std::string filePath = originalPath;
   
-  // 获取可执行文件所在目录的辅助函数
-  auto GetExecutableDirectory = []() {
+  // 获取可执行文件所在目录的辅助函数，显式指定返回类型
+  auto GetExecutableDirectory = []() -> std::string {
   #if defined(__APPLE__)
   char path[1024];
   uint32_t size = sizeof(path);
@@ -530,20 +534,22 @@ namespace Base
   
   if (global) {
   if (_globalAssets.find(name) == _globalAssets.end()) {
-  // 加载字体
+  // 加载字体，使用正确的BaseFont构造函数
   Font font = LoadFontEx(fullpath.c_str(), 24, NULL, 0);
-  auto asset = std::make_shared<BaseFont>(font, name);
-  _globalAssets[name] = {asset, AssetType::Font};
+  auto asset = std::make_shared<BaseFont>(font);
+  // 使用正确的AssetSlot构造方式
+  _globalAssets[name] = AssetSlot(AssetHandle<void>(asset.get()), asset);
   return AssetHandle<BaseFont>::Cast(_globalAssets[name].handle);
   } else {
   return AssetHandle<BaseFont>::Cast(_globalAssets[name].handle);
   }
   } else if (_currentScene != nullptr) {
   if (_sceneAssets[_currentScene].find(name) == _sceneAssets[_currentScene].end()) {
-  // 加载字体
+  // 加载字体，使用正确的BaseFont构造函数
   Font font = LoadFontEx(fullpath.c_str(), 24, NULL, 0);
-  auto asset = std::make_shared<BaseFont>(font, name);
-  _sceneAssets[_currentScene][name] = {asset, AssetType::Font};
+  auto asset = std::make_shared<BaseFont>(font);
+  // 使用正确的AssetSlot构造方式
+  _sceneAssets[_currentScene][name] = AssetSlot(AssetHandle<void>(asset.get()), asset);
   return AssetHandle<BaseFont>::Cast(_sceneAssets[_currentScene][name].handle);
   } else {
   std::stringstream error;
