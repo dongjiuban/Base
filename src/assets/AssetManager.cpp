@@ -571,4 +571,4 @@ namespace Base
   THROW_BASE_RUNTIME_ERROR(error.str());
   }
   }
-  } // namespace Base
+} // namespace Base
