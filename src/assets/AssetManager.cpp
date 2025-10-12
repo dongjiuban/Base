@@ -523,6 +523,15 @@ namespace Base
     return ".";
     };
     
+    // 在macOS上，检查应用包中的资源目录
+    #if defined(__APPLE__)
+    // 获取应用包资源目录的路径
+    std::string resourcePath = GetExecutableDirectory() + "/../assets/" + originalPath;
+    if (fs::exists(resourcePath)) {
+      filePath = resourcePath;
+    }
+    #endif
+    
     // 检查文件是否存在，如果不存在，尝试从可执行文件目录加载
     if (!fs::exists(filePath)) {
     std::string exeDir = GetExecutableDirectory();
@@ -542,8 +551,9 @@ namespace Base
     Font font = LoadFontEx(fullpath.c_str(), 24, NULL, 0);
     auto asset = std::make_shared<BaseFont>(font);
     // 使用正确的AssetSlot构造方式
-    _globalAssets[name] = {static_cast<AssetHandle<void>>(asset.get()), asset};
-    return AssetHandle<BaseFont>::Cast(_globalAssets[name].handle);
+    AssetHandle<BaseFont> handle(asset);
+    _globalAssets[name] = {static_cast<AssetHandle<void>>(handle), asset};
+    return handle;
     } else {
     return AssetHandle<BaseFont>::Cast(_globalAssets[name].handle);
     }
@@ -553,8 +563,9 @@ namespace Base
     Font font = LoadFontEx(fullpath.c_str(), 24, NULL, 0);
     auto asset = std::make_shared<BaseFont>(font);
     // 使用正确的AssetSlot构造方式
-    _sceneAssets[_currentScene][name] = {static_cast<AssetHandle<void>>(asset.get()), asset};
-    return AssetHandle<BaseFont>::Cast(_sceneAssets[_currentScene][name].handle);
+    AssetHandle<BaseFont> handle(asset);
+    _sceneAssets[_currentScene][name] = {static_cast<AssetHandle<void>>(handle), asset};
+    return handle;
     } else {
     std::stringstream error;
     error << "Repeated loading of scene-local font '" << name << "'";
@@ -564,12 +575,11 @@ namespace Base
     THROW_BASE_RUNTIME_ERROR("Invalid Scene reference in AssetManager");
     }
     }
-    }
     else
     {
-    std::stringstream error;
-    error << "Cannot find font file '" << path.string() << "'";
-    THROW_BASE_RUNTIME_ERROR(error.str());
+      std::stringstream error;
+      error << "Cannot find font file '" << path.string() << "'";
+      THROW_BASE_RUNTIME_ERROR(error.str());
     }
-    }
-} // namespace Base
+  }
+}
